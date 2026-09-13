@@ -801,8 +801,24 @@ function findBestEntry(text){
   return bestScore>0?best:null;
 }
 
+/* Referências fixas — capturadas uma única vez. Importante: depois que
+   o painel é movido para a janela flutuante, document.getElementById
+   não encontra mais esses elementos (eles saem do documento principal).
+   Guardando a referência direta, ela continua válida em qualquer documento. */
+const elJarvisPanel=document.getElementById('jarvisPanel');
+const elJarvisChat=document.getElementById('jarvisChat');
+const elJarvisInput=document.getElementById('jarvisInput');
+const elJarvisSend=document.getElementById('jarvisSend');
+const elCallTime=document.getElementById('callTime');
+const elCallDot=document.getElementById('callDot');
+const elCallLabel=document.getElementById('callLabel');
+const elBtnStartCall=document.getElementById('btnStartCall');
+const elBtnEndCall=document.getElementById('btnEndCall');
+const elBtnResetCall=document.getElementById('btnResetCall');
+const elBtnJarvis=document.getElementById('btnJarvis'); // fica na sidebar, nunca flutua
+
 function addChatMsg(role,text){
-  const chat=document.getElementById('jarvisChat');
+  const chat=elJarvisChat;
   const div=document.createElement('div');
   div.className=`j-msg ${role==='user'?'agent':'jarvis'}`;
   const now=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -819,8 +835,8 @@ function addChatMsg(role,text){
 function jarvisAsk(userText){
   if(!userText.trim())return;
   addChatMsg('user',userText);
-  document.getElementById('jarvisInput').value='';
-  document.getElementById('jarvisInput').style.height='auto';
+  elJarvisInput.value='';
+  elJarvisInput.style.height='auto';
   const match=findBestEntry(userText);
   if(!match){
     addChatMsg('jarvis','Não encontrei nenhum procedimento na base com essas palavras. Tente descrever de outro jeito, ou cadastre um novo procedimento se for um caso novo.');
@@ -863,7 +879,7 @@ function actionResumo(){
   addChatMsg('jarvis',`Duração até agora: **${m}:${s}**\n\n${linhas}`);
 }
 function actionIdentificar(){
-  const txt=document.getElementById('jarvisInput').value.trim();
+  const txt=elJarvisInput.value.trim();
   if(!txt){
     if(currentEntryId){
       const e=entries.find(x=>x.id===currentEntryId);
@@ -880,10 +896,9 @@ function actionIdentificar(){
 
 function toggleJarvis(){
   jarvisOpen=!jarvisOpen;
-  document.getElementById('jarvisPanel').classList.toggle('open',jarvisOpen);
-  const btn=document.getElementById('btnJarvis');
-  btn.classList.toggle('active',jarvisOpen);
-  if(jarvisOpen&&!document.getElementById('jarvisChat').children.length){
+  elJarvisPanel.classList.toggle('open',jarvisOpen);
+  elBtnJarvis.classList.toggle('active',jarvisOpen);
+  if(jarvisOpen&&!elJarvisChat.children.length){
     addChatMsg('jarvis','Olá! Sou o **Jarvis**, seu assistente de atendimento — funciono 100% local, buscando na sua própria base de conhecimento (sem enviar nada para fora).\n\nDescreva o que o cliente relatou e eu identifico o procedimento correto. Depois, use os botões de ação rápida para pegar descrição, fechamento e informações a coletar.\n\nClique no ícone 🗗 ali em cima para destacar este painel numa janela flutuante — assim ele fica visível mesmo trocando de aba.');
   }
 }
@@ -898,7 +913,7 @@ let jarvisHomeParent=null;
 let jarvisHomeNext=null;
 
 function returnPanelHome(){
-  const panel=document.getElementById('jarvisPanel');
+  const panel=elJarvisPanel;
   panel.classList.remove('floating');
   if(jarvisHomeParent){
     if(jarvisHomeNext&&jarvisHomeNext.parentNode===jarvisHomeParent)jarvisHomeParent.insertBefore(panel,jarvisHomeNext);
@@ -906,12 +921,12 @@ function returnPanelHome(){
   }
   panel.classList.add('open');
   jarvisOpen=true;
-  document.getElementById('btnJarvis').classList.add('active');
+  elBtnJarvis.classList.add('active');
   pipWindow=null;
 }
 
 async function openFloatingJarvis(){
-  const panel=document.getElementById('jarvisPanel');
+  const panel=elJarvisPanel;
   if(!('documentPictureInPicture' in window)){
     addChatMsg('jarvis','⚠️ Seu navegador não suporta janela flutuante nativa (funciona no Chrome/Edge atualizados). Vou tentar abrir um pop-up comum, que você pode posicionar do lado da outra aba.');
     window.open(location.href.split('#')[0],'jarvis_floating','width=380,height=650,resizable=yes');
@@ -940,44 +955,42 @@ async function openFloatingJarvis(){
 function updateTimerUI(){
   const m=Math.floor(callSeconds/60).toString().padStart(2,'0');
   const s=(callSeconds%60).toString().padStart(2,'0');
-  const el=document.getElementById('callTime');
-  const dot=document.getElementById('callDot');
-  const lbl=document.getElementById('callLabel');
+  const el=elCallTime,dot=elCallDot,lbl=elCallLabel;
   el.textContent=`${m}:${s}`;
   if(callSeconds>=540){el.className='call-time danger';dot.className='call-dot danger';lbl.textContent='Tempo crítico!';}
   else if(callSeconds>=480){el.className='call-time warn';dot.className='call-dot warn';lbl.textContent='Atenção ao tempo';}
   else{el.className='call-time';dot.className='call-dot active';lbl.textContent='Em ligação';}
 }
-document.getElementById('btnStartCall').addEventListener('click',()=>{
+elBtnStartCall.addEventListener('click',()=>{
   if(callActive)return;
   callActive=true;
   currentEntryId=null;
   callLog=[];
-  document.getElementById('jarvisChat').innerHTML='';
-  document.getElementById('btnStartCall').style.display='none';
-  document.getElementById('btnEndCall').style.display='';
-  document.getElementById('btnResetCall').style.display='';
-  document.getElementById('callDot').className='call-dot active';
-  document.getElementById('callLabel').textContent='Em ligação';
+  elJarvisChat.innerHTML='';
+  elBtnStartCall.style.display='none';
+  elBtnEndCall.style.display='';
+  elBtnResetCall.style.display='';
+  elCallDot.className='call-dot active';
+  elCallLabel.textContent='Em ligação';
   callInterval=setInterval(()=>{callSeconds++;updateTimerUI();},1000);
   if(!jarvisOpen&&!pipWindow)toggleJarvis();
 });
-document.getElementById('btnEndCall').addEventListener('click',()=>{
+elBtnEndCall.addEventListener('click',()=>{
   clearInterval(callInterval);callActive=false;
-  document.getElementById('callDot').className='call-dot';
-  document.getElementById('callLabel').textContent='Encerrada';
-  document.getElementById('btnStartCall').style.display='';
-  document.getElementById('btnEndCall').style.display='none';
+  elCallDot.className='call-dot';
+  elCallLabel.textContent='Encerrada';
+  elBtnStartCall.style.display='';
+  elBtnEndCall.style.display='none';
 });
-document.getElementById('btnResetCall').addEventListener('click',()=>{
+elBtnResetCall.addEventListener('click',()=>{
   clearInterval(callInterval);callActive=false;callSeconds=0;
-  document.getElementById('callTime').textContent='00:00';
-  document.getElementById('callTime').className='call-time';
-  document.getElementById('callDot').className='call-dot';
-  document.getElementById('callLabel').textContent='Aguardando';
-  document.getElementById('btnStartCall').style.display='';
-  document.getElementById('btnEndCall').style.display='none';
-  document.getElementById('btnResetCall').style.display='none';
+  elCallTime.textContent='00:00';
+  elCallTime.className='call-time';
+  elCallDot.className='call-dot';
+  elCallLabel.textContent='Aguardando';
+  elBtnStartCall.style.display='';
+  elBtnEndCall.style.display='none';
+  elBtnResetCall.style.display='none';
 });
 
 /* Quick actions */
@@ -987,14 +1000,14 @@ document.querySelectorAll('.qa-btn').forEach(btn=>{
 });
 
 /* Enviar mensagem */
-document.getElementById('btnJarvis').addEventListener('click',toggleJarvis);
+elBtnJarvis.addEventListener('click',toggleJarvis);
 const btnFloatJarvisEl=document.getElementById('btnFloatJarvis');
 if(btnFloatJarvisEl)btnFloatJarvisEl.addEventListener('click',openFloatingJarvis);
-document.getElementById('jarvisSend').addEventListener('click',()=>jarvisAsk(document.getElementById('jarvisInput').value));
-document.getElementById('jarvisInput').addEventListener('keydown',ev=>{
+elJarvisSend.addEventListener('click',()=>jarvisAsk(elJarvisInput.value));
+elJarvisInput.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();jarvisAsk(ev.target.value);}
 });
-document.getElementById('jarvisInput').addEventListener('input',function(){
+elJarvisInput.addEventListener('input',function(){
   this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';
 });
 
